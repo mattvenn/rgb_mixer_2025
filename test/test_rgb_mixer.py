@@ -8,7 +8,7 @@ ASSERT = True
 if "NOASSERT" in os.environ:
     ASSERT = False
 
-clocks_per_phase = 10
+clocks_per_phase = 10 * 128
 
 async def reset(dut):
     dut.enc0_a.value = 0
@@ -30,7 +30,32 @@ async def run_encoder_test(encoder,  max_count):
     # let noisy transition finish, otherwise can get an extra count
     for i in range(10):
         await encoder.update(0)
+
+async def pin_change(dut, pin, value, timeout=10000):
+    for i in range(timeout):
+        await ClockCycles(dut.clk, 1)
+        if pin == value:
+            break
+    else:
+        dut._log.error("timeout waiting for pin")
+        exit(1)
+
+async def test_pwm(dut, pwm_pin, pwm_value):
     
+    dut._log.info(f"sync to PWM rising edge")
+    # sync to pwm gen
+    await pin_change(dut, pwm_pin, 1)
+    await pin_change(dut, pwm_pin, 0)
+    await pin_change(dut, pwm_pin, 1)
+
+    # assert the PWM is on for the correct length of time
+    for i in range(pwm_value):
+        if ASSERT: assert pwm_pin == 1
+        await ClockCycles(dut.clk, 1)
+    for i in range(255 - pwm_value):
+        if ASSERT: assert pwm_pin == 0
+        await ClockCycles(dut.clk, 1)
+
 @cocotb.test()
 async def test_all(dut):
     clock = Clock(dut.clk, 10, units="us")
@@ -47,19 +72,12 @@ async def test_all(dut):
     assert dut.pwm1_out == 0
     assert dut.pwm2_out == 0
 
-    # do 3 ramps for each encoder 
-    max_count = 255
-    await run_encoder_test(encoder0, max_count)
-    await run_encoder_test(encoder1, max_count)
-    await run_encoder_test(encoder2, max_count)
+    # do 3 ramps for each encoder, keep it low as with strobe this takes a while 
+    await run_encoder_test(encoder0, 10)
+    await run_encoder_test(encoder1, 10)
+    await run_encoder_test(encoder2, 10)
 
-    # sync to pwm
-    await RisingEdge(dut.pwm0_out)
-    await FallingEdge(dut.clk)
-    # pwm should all be on for max_count 
-    for i in range(max_count): 
-        if ASSERT:
-            assert dut.pwm0_out == 1
-            assert dut.pwm1_out == 1
-            assert dut.pwm2_out == 1
-        await ClockCycles(dut.clk, 1)
+    PWM_STROBE = 9 # how many clocks to get one strobe for the PWM
+    await test_pwm(dut, dut.pwm0_out, 10 * PWM_STROBE)
+    await test_pwm(dut, dut.pwm1_out, 10 * PWM_STROBE)
+    await test_pwm(dut, dut.pwm2_out, 10 * PWM_STROBE)
