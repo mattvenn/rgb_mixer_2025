@@ -30,6 +30,31 @@ async def run_encoder_test(encoder,  max_count):
     # let noisy transition finish, otherwise can get an extra count
     for i in range(10):
         await encoder.update(0)
+
+async def pin_change(dut, pin, value, timeout=10000):
+    for i in range(timeout):
+        await ClockCycles(dut.clk, 1)
+        if pin == value:
+            break
+    else:
+        dut._log.error("timeout waiting for pin")
+        exit(1)
+
+async def test_pwm(dut, pwm_pin, pwm_value):
+    
+    dut._log.info(f"sync to PWM rising edge")
+    # sync to pwm gen
+    await pin_change(dut, pwm_pin, 1)
+    await pin_change(dut, pwm_pin, 0)
+    await pin_change(dut, pwm_pin, 1)
+
+    # assert the PWM is on for the correct length of time
+    for i in range(pwm_value):
+        if ASSERT: assert pwm_pin == 1
+        await ClockCycles(dut.clk, 1)
+    for i in range(255 - pwm_value):
+        if ASSERT: assert pwm_pin == 0
+        await ClockCycles(dut.clk, 1)
     
 @cocotb.test()
 async def test_all(dut):
@@ -40,6 +65,7 @@ async def test_all(dut):
 
     cocotb.start_soon(clock.start())
 
+    dut._log.info(f"reset")
     await reset(dut)
 
     # pwm should all be low at start
@@ -47,19 +73,30 @@ async def test_all(dut):
     assert dut.pwm1_out == 0
     assert dut.pwm2_out == 0
 
-    # do 3 ramps for each encoder 
-    max_count = 255
-    await run_encoder_test(encoder0, max_count)
-    await run_encoder_test(encoder1, max_count)
-    await run_encoder_test(encoder2, max_count)
+    # set encoder to 10
+    dut._log.info(f"set to 10")
+    await run_encoder_test(encoder0, 10)
+    await run_encoder_test(encoder1, 10)
+    await run_encoder_test(encoder2, 10)
+    await test_pwm(dut, dut.pwm0_out, 10)
+    await test_pwm(dut, dut.pwm1_out, 10)
+    await test_pwm(dut, dut.pwm2_out, 10)
 
-    # sync to pwm
-    await RisingEdge(dut.pwm0_out)
-    await FallingEdge(dut.clk)
-    # pwm should all be on for max_count 
-    for i in range(max_count): 
-        if ASSERT:
-            assert dut.pwm0_out == 1
-            assert dut.pwm1_out == 1
-            assert dut.pwm2_out == 1
-        await ClockCycles(dut.clk, 1)
+    # set encoder to 60
+    dut._log.info(f"set to 60")
+    await run_encoder_test(encoder0, 50)
+    await run_encoder_test(encoder1, 50)
+    await run_encoder_test(encoder2, 50)
+    await test_pwm(dut, dut.pwm0_out, 60)
+    await test_pwm(dut, dut.pwm1_out, 60)
+    await test_pwm(dut, dut.pwm2_out, 60)
+
+    # set encoder to 250
+    dut._log.info(f"set to 250")
+    await run_encoder_test(encoder0, 190)
+    await run_encoder_test(encoder1, 190)
+    await run_encoder_test(encoder2, 190)
+    await test_pwm(dut, dut.pwm0_out, 250)
+    await test_pwm(dut, dut.pwm1_out, 250)
+    await test_pwm(dut, dut.pwm2_out, 250)
+
