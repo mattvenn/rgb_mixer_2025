@@ -6,7 +6,6 @@ module debounce #(
     input wire clk,
     input wire reset,
     input wire button,
-    input wire strobe,
     output reg debounced
 );
     localparam on_value = 2 ** HIST_LEN - 1;
@@ -18,7 +17,7 @@ module debounce #(
             button_hist <= 0;
             debounced <= 1'b0;
 
-        end else if (strobe == 1'b1) begin
+        end else begin
 
             button_hist <= {button_hist[HIST_LEN-2:0], button};
 

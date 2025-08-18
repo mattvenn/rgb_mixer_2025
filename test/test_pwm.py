@@ -17,8 +17,6 @@ async def reset(dut):
 async def test_pwm(dut):
     clock = Clock(dut.clk, 10, units="us")
     cocotb.start_soon(clock.start())
-    # set the strobe always high to keep the test short
-    dut.strobe.value = 1
     
     # test a range of values
     for i in range(10, 255, 20):

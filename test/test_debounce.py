@@ -36,8 +36,6 @@ async def test_debouncer(dut):
     clocks_per_phase = 10
     switch = BouncingSwitch(dut)
     cocotb.start_soon(clock.start())
-    # set the strobe always high to keep the test short
-    dut.strobe.value = 1
 
     await reset(dut)
     if ASSERT:
