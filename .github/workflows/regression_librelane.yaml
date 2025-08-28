@@ -1,0 +1,20 @@
+name: Monthly Check LibreLane
+
+on:
+  push:
+  schedule:
+    - cron: '0 8 1 * *'  # Run at 08:00 UTC on the 1st of every month
+  workflow_dispatch:
+
+jobs:
+  librelane:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: mattvenn/z2a-course-regressions@main
+        with:
+          repo: mattvenn/rgb_mixer_2025
+          ref: main
+          command: make gds
+          artifact_file: rgb_mixer.gds
+

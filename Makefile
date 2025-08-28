@@ -64,6 +64,12 @@ show_synth_%: src/%.v
 prog: $(PROJECT).bin
 	iceprog $<
 
+# ASIC recipes
+gds:
+	# all in one line so openlane gets the exports
+	PDK_ROOT=/foss/pdks PDK=sky130A PDKPATH=/foss/pdks/sky130A STD_CELL_LIBRARY=sky130_fd_sc_hd librelane --manual-pdk rgb_mixer.json
+	cp runs/*/final/gds/rgb_mixer.gds .
+
 # general recipes
 
 lint:
